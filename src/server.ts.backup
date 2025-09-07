@@ -6,15 +6,15 @@ const app = new Hono()
 
 // Habilita CORS para todas as rotas
 app.use('/*', cors({
-  origin: ['http://localhost:5173', 'http://localhost:5175', 'http://localhost:5176', 'http://localhost:3000', 'http://127.0.0.1:5173', 'http://127.0.0.1:5175', 'http://127.0.0.1:5176', 'http://127.0.0.1:3000'], // Permite múltiplas origens
+  origin: ['http://localhost:5173'], // Ajuste para a URL do seu frontend
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowHeaders: ['Content-Type', 'Authorization']
+  allowHeaders: ['Content-Type']
 }))
 
 // Nosso "banco de dados" temporário
 let tasks = [
-  { id: 1, task: 'Escovar os dentes', completed: false },
-  { id: 2, task: 'Estudar Vue.js', completed: false }
+  { id: 1, task: 'Escovar os dentes' },
+  { id: 2, task: 'Estudar Vue.js' }
 ]
 
 // Rota para listar tarefas
