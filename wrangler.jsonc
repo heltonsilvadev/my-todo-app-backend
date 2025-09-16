@@ -1,15 +1,11 @@
 {
-	"name": "todo-frontend",
+	"name": "todo-backend",
 	"main": "src/server.ts",
 	"compatibility_date": "2024-01-01",
 	"compatibility_flags": [
 		"nodejs_compat"
 	],
 	"kv_namespaces": [
-		{
-			"binding": "TODO_KV",
-			"id": "2b251596628d4f57b977b39889d82947"
-		},
 		{
 			"binding": "TODO_KV",
 			"id": "2b251596628d4f57b977b39889d82947"
