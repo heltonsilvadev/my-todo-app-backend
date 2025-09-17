@@ -16,38 +16,52 @@ interface Task {
 
 // Habilita CORS para todas as rotas
 app.use('/*', cors({
-  origin: ['http://localhost:5173', 'http://localhost:5174', 'http://127.0.0.1:5173'], // Permite origens locais do frontend
+  origin: ['http://localhost:5173', 'http://localhost:5174', 'http://127.0.0.1:5173', 'http://localhost:4173', 'https://5b037173.heltondev-frontend.pages.dev'], // Permite origens locais e produção do frontend
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowHeaders: ['Content-Type', 'Authorization']
 }))
 
-// Funções auxiliares para persistência com KV
+// Armazenamento local em memória para desenvolvimento local
+let localTasks: Task[] = []
+
+// Funções auxiliares para persistência
 const getTasks = async (c: any) => {
-  try {
-    const tasksData = await c.env.TODO_KV.get('tasks')
-    return tasksData ? JSON.parse(tasksData) : []
-  } catch (error) {
-    console.error('Erro ao carregar tarefas:', error)
-    return []
+  // Verifica se é produção (Cloudflare Workers) ou desenvolvimento local
+  if (c?.env?.TODO_KV) {
+    try {
+      const tasksData = await c.env.TODO_KV.get('tasks')
+      return tasksData ? JSON.parse(tasksData) : []
+    } catch (error) {
+      console.error('Erro ao carregar tarefas KV:', error)
+      return []
+    }
+  } else {
+    // Desenvolvimento local: usar armazenamento em memória
+    return localTasks
   }
 }
 
 const saveTasks = async (c: any, tasks: any[]) => {
-  try {
-    await c.env.TODO_KV.put('tasks', JSON.stringify(tasks))
-  } catch (error) {
-    console.error('Erro ao salvar tarefas:', error)
+  if (c?.env?.TODO_KV) {
+    try {
+      await c.env.TODO_KV.put('tasks', JSON.stringify(tasks))
+    } catch (error) {
+      console.error('Erro ao salvar tarefas KV:', error)
+    }
+  } else {
+    // Desenvolvimento local
+    localTasks = tasks
   }
 }
 
 // Rota para listar tarefas
-app.get('/api/todos', async (c) => {
+app.get('/todos', async (c) => {
   const tasks = await getTasks(c)
   return c.json({ success: true, data: tasks })
 })
 
 // Rota para adicionar tarefa
-app.post('/api/todos', async (c) => {
+app.post('/todos', async (c) => {
   try {
     const body = await c.req.json()
 
@@ -81,7 +95,7 @@ app.post('/api/todos', async (c) => {
 })
 
 // Rota para atualizar tarefa
-app.put('/api/todos/:id', async (c) => {
+app.put('/todos/:id', async (c) => {
   try {
     const id = parseInt(c.req.param('id'))
     const body = await c.req.json()
@@ -123,7 +137,7 @@ app.put('/api/todos/:id', async (c) => {
 })
 
 // Rota para deletar tarefa
-app.delete('/api/todos/:id', async (c) => {
+app.delete('/todos/:id', async (c) => {
   try {
     const id = parseInt(c.req.param('id'))
     const tasks = await getTasks(c)
@@ -147,7 +161,5 @@ app.delete('/api/todos/:id', async (c) => {
     }, 400)
   }
 })
-
-
 
 export default app
