@@ -55,13 +55,13 @@ const saveTasks = async (c: any, tasks: any[]) => {
 }
 
 // Rota para listar tarefas
-app.get('/todos', async (c) => {
+app.get('/api/todos', async (c) => {
   const tasks = await getTasks(c)
   return c.json({ success: true, data: tasks })
 })
 
 // Rota para adicionar tarefa
-app.post('/todos', async (c) => {
+app.post('/api/todos', async (c) => {
   try {
     const body = await c.req.json()
 
@@ -95,7 +95,7 @@ app.post('/todos', async (c) => {
 })
 
 // Rota para atualizar tarefa
-app.put('/todos/:id', async (c) => {
+app.put('/api/todos/:id', async (c) => {
   try {
     const id = parseInt(c.req.param('id'))
     const body = await c.req.json()
@@ -137,7 +137,7 @@ app.put('/todos/:id', async (c) => {
 })
 
 // Rota para deletar tarefa
-app.delete('/todos/:id', async (c) => {
+app.delete('/api/todos/:id', async (c) => {
   try {
     const id = parseInt(c.req.param('id'))
     const tasks = await getTasks(c)
