@@ -16,7 +16,7 @@ interface Task {
 
 // Habilita CORS para todas as rotas
 app.use('/*', cors({
-  origin: ['http://localhost:5173', 'http://localhost:5174', 'http://127.0.0.1:5173', 'http://localhost:4173', 'https://5b037173.heltondev-frontend.pages.dev'], // Permite origens locais e produção do frontend
+  origin: '*', // Permite todas as origens
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowHeaders: ['Content-Type', 'Authorization']
 }))
