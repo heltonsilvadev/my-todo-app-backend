@@ -1,7 +1,11 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
+import { Context } from 'hono'
 import { KVNamespace } from '@cloudflare/workers-types'
 import { serve } from '@hono/node-server'
+
+declare const process: any
+declare const crypto: any
 
 const app = new Hono<{
   Bindings: {
@@ -10,10 +14,10 @@ const app = new Hono<{
 }>()
 
 interface Task {
-  id: number
+  id: string
   task: string
   completed: boolean
-  createdAt?: string
+  createdAt: string
 }
 
 // Habilita CORS para todas as rotas
@@ -76,7 +80,7 @@ app.post('/api/todos', async (c) => {
     }
 
     const newTask = {
-      id: Date.now(),
+      id: crypto.randomUUID(),
       task: body.task.trim(),
       completed: false,
       createdAt: new Date().toISOString()
@@ -99,7 +103,7 @@ app.post('/api/todos', async (c) => {
 // Rota para atualizar tarefa
 app.put('/api/todos/:id', async (c) => {
   try {
-    const id = parseInt(c.req.param('id'))
+    const id = c.req.param('id')
     const body = await c.req.json()
 
     const tasks = await getTasks(c)
@@ -124,7 +128,13 @@ app.put('/api/todos/:id', async (c) => {
     }
 
     if (body.completed !== undefined) {
-      tasks[taskIndex].completed = Boolean(body.completed)
+      if (typeof body.completed !== 'boolean') {
+        return c.json({
+          success: false,
+          error: 'O campo "completed" deve ser um booleano'
+        }, 400)
+      }
+      tasks[taskIndex].completed = body.completed
     }
 
     await saveTasks(c, tasks)
@@ -141,7 +151,7 @@ app.put('/api/todos/:id', async (c) => {
 // Rota para deletar tarefa
 app.delete('/api/todos/:id', async (c) => {
   try {
-    const id = parseInt(c.req.param('id'))
+    const id = c.req.param('id')
     const tasks = await getTasks(c)
     const taskIndex = tasks.findIndex((task: Task) => task.id === id)
 
@@ -170,7 +180,6 @@ if (typeof process !== 'undefined' && process.argv.includes('--serve')) {
   console.log(`🚀 Servidor rodando em http://localhost:${port}`)
   console.log(`📚 API disponível em http://localhost:${port}/api/todos`)
 
-  // @ts-ignore
   serve({
     fetch: app.fetch,
     port: Number(port),
