@@ -1,6 +1,5 @@
-import { Hono } from 'hono'
+import { Hono, Context } from 'hono'
 import { cors } from 'hono/cors'
-import { Context } from 'hono'
 import { KVNamespace } from '@cloudflare/workers-types'
 import { serve } from '@hono/node-server'
 
@@ -20,6 +19,12 @@ interface Task {
   createdAt: string
 }
 
+type AppContext = Context<{
+  Bindings: {
+    TODO_KV: KVNamespace
+  }
+}>
+
 // Habilita CORS para todas as rotas
 app.use('/*', cors({
   origin: '*', // Permite todas as origens
@@ -31,7 +36,7 @@ app.use('/*', cors({
 let localTasks: Task[] = []
 
 // Funções auxiliares para persistência
-const getTasks = async (c: any) => {
+const getTasks = async (c: AppContext): Promise<Task[]> => {
   // Verifica se é produção (Cloudflare Workers) ou desenvolvimento local
   if (c?.env?.TODO_KV) {
     try {
@@ -47,7 +52,7 @@ const getTasks = async (c: any) => {
   }
 }
 
-const saveTasks = async (c: any, tasks: any[]) => {
+const saveTasks = async (c: AppContext, tasks: Task[]): Promise<void> => {
   if (c?.env?.TODO_KV) {
     try {
       await c.env.TODO_KV.put('tasks', JSON.stringify(tasks))
