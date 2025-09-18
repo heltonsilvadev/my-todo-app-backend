@@ -3,9 +3,6 @@ import { cors } from 'hono/cors'
 import { KVNamespace } from '@cloudflare/workers-types'
 import { serve } from '@hono/node-server'
 
-declare const process: any
-declare const crypto: any
-
 const app = new Hono<{
   Bindings: {
     TODO_KV: KVNamespace
@@ -26,14 +23,20 @@ type AppContext = Context<{
 }>
 
 // Habilita CORS para todas as rotas
+// AVISO: Em produção, considere restringir origins a domínios específicos para segurança
 app.use('/*', cors({
-  origin: '*', // Permite todas as origens
+  origin: '*',
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowHeaders: ['Content-Type', 'Authorization']
 }))
 
 // Armazenamento local em memória para desenvolvimento local
 let localTasks: Task[] = []
+
+// Função auxiliar para gerar ID único
+const generateId = (): string => {
+  return crypto.randomUUID()
+}
 
 // Funções auxiliares para persistência
 const getTasks = async (c: AppContext): Promise<Task[]> => {
@@ -44,7 +47,7 @@ const getTasks = async (c: AppContext): Promise<Task[]> => {
       return tasksData ? JSON.parse(tasksData) : []
     } catch (error) {
       console.error('Erro ao carregar tarefas KV:', error)
-      return []
+      throw new Error('Failed to load tasks from KV')
     }
   } else {
     // Desenvolvimento local: usar armazenamento em memória
@@ -58,6 +61,7 @@ const saveTasks = async (c: AppContext, tasks: Task[]): Promise<void> => {
       await c.env.TODO_KV.put('tasks', JSON.stringify(tasks))
     } catch (error) {
       console.error('Erro ao salvar tarefas KV:', error)
+      throw new Error('Failed to save tasks to KV')
     }
   } else {
     // Desenvolvimento local
@@ -85,7 +89,7 @@ app.post('/api/todos', async (c) => {
     }
 
     const newTask = {
-      id: crypto.randomUUID(),
+      id: generateId(),
       task: body.task.trim(),
       completed: false,
       createdAt: new Date().toISOString()
@@ -180,8 +184,8 @@ app.delete('/api/todos/:id', async (c) => {
 })
 
 // Execução local para desenvolvimento
-if (typeof process !== 'undefined' && process.argv.includes('--serve')) {
-  const port = process.env.PORT || 3001
+if ((globalThis as any).process?.argv.includes('--serve')) {
+  const port = (globalThis as any).process?.env.PORT || 3001
   console.log(`🚀 Servidor rodando em http://localhost:${port}`)
   console.log(`📚 API disponível em http://localhost:${port}/api/todos`)
 
