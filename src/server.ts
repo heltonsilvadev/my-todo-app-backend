@@ -1,5 +1,7 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
+import { KVNamespace } from '@cloudflare/workers-types'
+import { serve } from '@hono/node-server'
 
 const app = new Hono<{
   Bindings: {
@@ -161,5 +163,18 @@ app.delete('/api/todos/:id', async (c) => {
     }, 400)
   }
 })
+
+// Execução local para desenvolvimento
+if (typeof process !== 'undefined' && process.argv.includes('--serve')) {
+  const port = process.env.PORT || 3001
+  console.log(`🚀 Servidor rodando em http://localhost:${port}`)
+  console.log(`📚 API disponível em http://localhost:${port}/api/todos`)
+
+  // @ts-ignore
+  serve({
+    fetch: app.fetch,
+    port: Number(port),
+  })
+}
 
 export default app
