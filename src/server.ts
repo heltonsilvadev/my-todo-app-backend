@@ -30,13 +30,38 @@ app.use('/*', cors({
   allowHeaders: ['Content-Type', 'Authorization']
 }))
 
-// Armazenamento local em memória para desenvolvimento local
-let localTasks: Task[] = []
+import { readFileSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
 
 // Função auxiliar para gerar ID único
 const generateId = (): string => {
   return crypto.randomUUID()
 }
+
+// Caminho para armazenar dados locais em desenvolvimento
+const LOCAL_DATA_FILE = join(process.cwd(), 'local-tasks.json')
+
+// Função para carregar tarefas do arquivo local
+const loadLocalTasks = (): Task[] => {
+  try {
+    const data = readFileSync(LOCAL_DATA_FILE, 'utf8')
+    return JSON.parse(data)
+  } catch {
+    return []
+  }
+}
+
+// Função para salvar tarefas no arquivo local
+const saveLocalTasks = (tasks: Task[]): void => {
+  try {
+    writeFileSync(LOCAL_DATA_FILE, JSON.stringify(tasks, null, 2))
+  } catch (error) {
+    console.error('Erro ao salvar tarefas locais:', error)
+  }
+}
+
+// Armazenamento local em memória para desenvolvimento local (com persistência)
+let localTasks: Task[] = loadLocalTasks()
 
 // Funções auxiliares para persistência
 const getTasks = async (c: AppContext): Promise<Task[]> => {
@@ -64,23 +89,16 @@ const saveTasks = async (c: AppContext, tasks: Task[]): Promise<void> => {
       throw new Error('Failed to save tasks to KV')
     }
   } else {
-    // Desenvolvimento local
+    // Desenvolvimento local: salvar em memória e arquivo
     localTasks = tasks
+    saveLocalTasks(tasks)
   }
 }
 
 // Rota para listar tarefas
 app.get('/api/todos', async (c) => {
-  try {
-    const tasks = await getTasks(c)
-    return c.json({ success: true, data: tasks })
-  } catch (error) {
-    console.error('Erro no GET /api/todos:', error)
-    return c.json({
-      success: false,
-      error: 'Erro ao listar tarefas'
-    }, 500)
-  }
+  const tasks = await getTasks(c)
+  return c.json({ success: true, data: tasks })
 })
 
 // Rota para adicionar tarefa
@@ -110,11 +128,10 @@ app.post('/api/todos', async (c) => {
     return c.json({ success: true, data: newTask }, 201)
 
   } catch (error) {
-    console.error('Erro no POST /api/todos:', error)
     return c.json({
       success: false,
       error: 'Erro ao processar a requisição'
-    }, 500)
+    }, 400)
   }
 })
 
@@ -159,11 +176,10 @@ app.put('/api/todos/:id', async (c) => {
     return c.json({ success: true, data: tasks[taskIndex] })
 
   } catch (error) {
-    console.error('Erro no PUT /api/todos/:id:', error)
     return c.json({
       success: false,
       error: 'Erro ao processar a requisição'
-    }, 500)
+    }, 400)
   }
 })
 
@@ -171,17 +187,10 @@ app.put('/api/todos/:id', async (c) => {
 app.delete('/api/todos/:id', async (c) => {
   try {
     const id = c.req.param('id')
-    const isUsingKV = !!c?.env?.TODO_KV
-    console.log(`DELETE /api/todos/${id} - Using KV: ${isUsingKV}`)
-
     const tasks = await getTasks(c)
-    console.log(`Tasks retrieved: ${tasks.length} items`)
-
     const taskIndex = tasks.findIndex((task: Task) => task.id === id)
-    console.log(`Task index found: ${taskIndex}, ID: ${id}`)
 
     if (taskIndex === -1) {
-      console.log('Task not found')
       return c.json({
         success: false,
         error: 'Tarefa não encontrada'
@@ -189,25 +198,20 @@ app.delete('/api/todos/:id', async (c) => {
     }
 
     const deletedTask = tasks.splice(taskIndex, 1)[0]
-    console.log(`Task deleted: ${deletedTask.id}`)
-
     await saveTasks(c, tasks)
-    console.log(`Tasks saved, remaining: ${tasks.length}`)
-
     return c.json({ success: true, data: deletedTask })
 
   } catch (error) {
-    console.error('Erro no DELETE /api/todos/:id:', error)
     return c.json({
       success: false,
       error: 'Erro ao processar a requisição'
-    }, 500)
+    }, 400)
   }
 })
 
 // Execução local para desenvolvimento
 if ((globalThis as any).process?.argv.includes('--serve')) {
-  const port = process.env.PORT || 3001
+  const port = (globalThis as any).process?.env.PORT || 3001
   console.log(`🚀 Servidor rodando em http://localhost:${port}`)
   console.log(`📚 API disponível em http://localhost:${port}/api/todos`)
 
